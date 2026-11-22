@@ -1,0 +1,481 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Primitives
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'ronalkra@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOptionalId(id) {
+      return id is string && (id.size() == 0 || (id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$')));
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(uid) {
+      return isVerifiedUser() && request.auth.uid == uid;
+    }
+
+    function isBoundedString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function ownsDoc(collectionName, docId) {
+      return isAdmin() || (
+        exists(/databases/$(database)/documents/$(collectionName)/$(docId)) &&
+        get(/databases/$(database)/documents/$(collectionName)/$(docId)).data.ownerUid == request.auth.uid
+      );
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Synchronized with firebase-blueprint.json)
+    // =========================================================================
+
+    function isValidStaff(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'role', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && isBoundedString(data.displayName, 1, 120)
+        && isBoundedString(data.email, 3, 180)
+        && data.role in ['pastor', 'secretaria', 'lider', 'consulta']
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFamily(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'apellidoFamilia', 'direccion', 'ciudad',
+          'telefonoHogar', 'jefeHogarNombre', 'notas', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'apellidoFamilia', 'direccion', 'ciudad',
+          'telefonoHogar', 'jefeHogarNombre', 'notas', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerUid)
+        && isBoundedString(data.apellidoFamilia, 1, 120)
+        && isBoundedString(data.direccion, 0, 240)
+        && isBoundedString(data.ciudad, 0, 100)
+        && isBoundedString(data.telefonoHogar, 0, 40)
+        && isBoundedString(data.jefeHogarNombre, 0, 140)
+        && isBoundedString(data.notas, 0, 600)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMinistry(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'nombre', 'categoria', 'descripcion',
+          'liderNombre', 'diaReunion', 'horario', 'ubicacion',
+          'activo', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'nombre', 'categoria', 'descripcion',
+          'liderNombre', 'diaReunion', 'horario', 'ubicacion',
+          'activo', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerUid)
+        && isBoundedString(data.nombre, 1, 120)
+        && data.categoria in ['Alabanza', 'Enseñanza', 'Jóvenes', 'Niños', 'Diaconado', 'Damas', 'Caballeros', 'Intercesión', 'Acción Social', 'Misiones', 'Administración', 'Células']
+        && isBoundedString(data.descripcion, 0, 500)
+        && isBoundedString(data.liderNombre, 0, 140)
+        && isBoundedString(data.diaReunion, 0, 60)
+        && isBoundedString(data.horario, 0, 60)
+        && isBoundedString(data.ubicacion, 0, 140)
+        && data.activo is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'codigoMiembro', 'nombres', 'apellidos', 'tipoDocumento', 'documentoIdentidad',
+          'fechaNacimiento', 'genero', 'estadoCivil', 'telefono', 'email', 'direccion', 'barrio',
+          'profesionOcupacion', 'procedenciaTipo', 'iglesiaProcedencia', 'lugarProcedencia',
+          'discipuladoEstado', 'cargo', 'familiaId', 'rolFamiliar', 'estadoMembresia', 'bautizado',
+          'fechaBautismo', 'fechaIngreso', 'ministerioId', 'notasPastorales', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'codigoMiembro', 'nombres', 'apellidos', 'tipoDocumento', 'documentoIdentidad',
+          'fechaNacimiento', 'genero', 'estadoCivil', 'telefono', 'email', 'direccion', 'barrio',
+          'profesionOcupacion', 'procedenciaTipo', 'iglesiaProcedencia', 'lugarProcedencia',
+          'discipuladoEstado', 'cargo', 'familiaId', 'rolFamiliar', 'estadoMembresia', 'bautizado',
+          'fechaBautismo', 'fechaIngreso', 'ministerioId', 'notasPastorales', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerUid)
+        && isBoundedString(data.codigoMiembro, 1, 40)
+        && isBoundedString(data.nombres, 1, 120)
+        && isBoundedString(data.apellidos, 1, 120)
+        && data.tipoDocumento in ['CC', 'TI', 'D.EXT', 'RC', 'PAS', 'Otro']
+        && isBoundedString(data.documentoIdentidad, 0, 40)
+        && isBoundedString(data.fechaNacimiento, 0, 20)
+        && data.genero in ['Masculino', 'Femenino', 'Otro', 'No especificado']
+        && data.estadoCivil in ['Soltero/a', 'Casado/a', 'Viudo/a', 'Divorciado/a', 'Separado/a', 'Unión Libre', 'No especificado']
+        && isBoundedString(data.telefono, 0, 40)
+        && isBoundedString(data.email, 0, 180)
+        && isBoundedString(data.direccion, 0, 240)
+        && isBoundedString(data.barrio, 0, 100)
+        && isBoundedString(data.profesionOcupacion, 0, 120)
+        && data.procedenciaTipo in ['Local', 'Transferido', 'No especificado']
+        && isBoundedString(data.iglesiaProcedencia, 0, 140)
+        && isBoundedString(data.lugarProcedencia, 0, 120)
+        && data.discipuladoEstado in ['SI', 'NO', 'En Proceso']
+        && isBoundedString(data.cargo, 0, 160)
+        && isOptionalId(data.familiaId)
+        && isBoundedString(data.rolFamiliar, 0, 60)
+        && data.estadoMembresia in ['Activo', 'Visitante', 'Nuevo Creyente', 'En Discipulado', 'Trasladado', 'Inactivo']
+        && data.bautizado is bool
+        && isBoundedString(data.fechaBautismo, 0, 20)
+        && isBoundedString(data.fechaIngreso, 0, 20)
+        && isOptionalId(data.ministerioId)
+        && isBoundedString(data.notasPastorales, 0, 1000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'titulo', 'tipo', 'fecha', 'horaInicio', 'horaFin',
+          'ubicacion', 'responsableNombre', 'ministerioId', 'estado',
+          'capacidadEsperada', 'descripcion', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'titulo', 'tipo', 'fecha', 'horaInicio', 'horaFin',
+          'ubicacion', 'responsableNombre', 'ministerioId', 'estado',
+          'capacidadEsperada', 'descripcion', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerUid)
+        && isBoundedString(data.titulo, 1, 160)
+        && data.tipo in ['Culto Dominical', 'Estudio Bíblico', 'Oración', 'Jóvenes', 'Conferencia', 'Bautismo', 'Reunión Administrativa', 'Especial']
+        && isBoundedString(data.fecha, 4, 20)
+        && isBoundedString(data.horaInicio, 0, 20)
+        && isBoundedString(data.horaFin, 0, 20)
+        && isBoundedString(data.ubicacion, 0, 160)
+        && isBoundedString(data.responsableNombre, 0, 140)
+        && isOptionalId(data.ministerioId)
+        && data.estado in ['Programado', 'En Curso', 'Finalizado', 'Cancelado']
+        && data.capacidadEsperada is number && data.capacidadEsperada >= 0 && data.capacidadEsperada <= 50000
+        && isBoundedString(data.descripcion, 0, 600)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'eventoId', 'miembroId', 'nombreAsistente',
+          'fecha', 'tipoAsistente', 'presente', 'observaciones',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'eventoId', 'miembroId', 'nombreAsistente',
+          'fecha', 'tipoAsistente', 'presente', 'observaciones',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerUid)
+        && isValidId(data.eventoId)
+        && isOptionalId(data.miembroId)
+        && isBoundedString(data.nombreAsistente, 1, 160)
+        && isBoundedString(data.fecha, 4, 20)
+        && data.tipoAsistente in ['Miembro', 'Visitante', 'Primera Vez']
+        && data.presente is bool
+        && isBoundedString(data.observaciones, 0, 400)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomSheet(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'nombreHoja', 'archivoOrigen', 'columnas',
+          'totalFilas', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'nombreHoja', 'archivoOrigen', 'columnas',
+          'totalFilas', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerUid)
+        && isBoundedString(data.nombreHoja, 1, 120)
+        && isBoundedString(data.archivoOrigen, 1, 180)
+        && data.columnas is list
+        && data.columnas.size() >= 1 && data.columnas.size() <= 40
+        && data.columnas[0] is string
+        && data.totalFilas is number && data.totalFilas >= 0 && data.totalFilas <= 50000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomSheetRow(data) {
+      return data.keys().hasAll(['ownerUid', 'sheetId', 'rowIndex', 'values', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerUid', 'sheetId', 'rowIndex', 'values', 'createdAt', 'updatedAt'])
+        && isValidId(data.ownerUid)
+        && isValidId(data.sheetId)
+        && data.rowIndex is number && data.rowIndex >= 0 && data.rowIndex <= 50000
+        && data.values is map && data.values.size() <= 40
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Rules
+    // =========================================================================
+
+    match /admins/{uid} {
+      allow get: if isVerifiedUser() && isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isAdmin() && isValidId(uid) && isValidStaff(incoming())
+        && incoming().uid == uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(uid) && isValidStaff(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isBootstrappedAdmin() && isValidId(uid);
+    }
+
+    match /staff/{uid} {
+      allow get: if isVerifiedUser() && isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.uid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(uid) && isValidStaff(incoming())
+        && incoming().uid == uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (isOwner(uid) && incoming().role == 'consulta' && incoming().active == true)
+        );
+      allow update: if isVerifiedUser() && isValidId(uid) && isValidStaff(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            isOwner(uid) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(uid);
+    }
+
+    match /families/{familyId} {
+      allow get: if isVerifiedUser() && isValidId(familyId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(familyId) && isValidFamily(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(familyId) && isValidFamily(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().ownerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'apellidoFamilia', 'direccion', 'ciudad', 'telefonoHogar',
+              'jefeHogarNombre', 'notas', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(familyId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+    }
+
+    match /ministries/{ministryId} {
+      allow get: if isVerifiedUser() && isValidId(ministryId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(ministryId) && isValidMinistry(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(ministryId) && isValidMinistry(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().ownerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'nombre', 'categoria', 'descripcion', 'liderNombre',
+              'diaReunion', 'horario', 'ubicacion', 'activo', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(ministryId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+    }
+
+    match /members/{memberId} {
+      allow get: if isVerifiedUser() && isValidId(memberId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(memberId) && isValidMember(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().familiaId == '' || ownsDoc('families', incoming().familiaId))
+        && (incoming().ministerioId == '' || ownsDoc('ministries', incoming().ministerioId));
+      allow update: if isVerifiedUser() && isValidId(memberId) && isValidMember(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().ownerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'codigoMiembro', 'nombres', 'apellidos', 'tipoDocumento', 'documentoIdentidad',
+              'fechaNacimiento', 'genero', 'estadoCivil', 'telefono', 'email',
+              'direccion', 'barrio', 'profesionOcupacion', 'procedenciaTipo',
+              'iglesiaProcedencia', 'lugarProcedencia', 'discipuladoEstado', 'cargo',
+              'familiaId', 'rolFamiliar', 'estadoMembresia',
+              'bautizado', 'fechaBautismo', 'fechaIngreso', 'ministerioId',
+              'notasPastorales', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(memberId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+    }
+
+    match /events/{eventId} {
+      allow get: if isVerifiedUser() && isValidId(eventId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(eventId) && isValidEvent(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().ministerioId == '' || ownsDoc('ministries', incoming().ministerioId));
+      allow update: if isVerifiedUser() && isValidId(eventId) && isValidEvent(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().ownerUid == request.auth.uid &&
+            !(existing().estado in ['Finalizado', 'Cancelado']) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'titulo', 'tipo', 'fecha', 'horaInicio', 'horaFin',
+              'ubicacion', 'responsableNombre', 'ministerioId',
+              'estado', 'capacidadEsperada', 'descripcion', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(eventId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+    }
+
+    match /attendances/{attendanceId} {
+      allow get: if isVerifiedUser() && isValidId(attendanceId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(attendanceId) && isValidAttendance(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && ownsDoc('events', incoming().eventoId)
+        && (incoming().miembroId == '' || ownsDoc('members', incoming().miembroId));
+      allow update: if isVerifiedUser() && isValidId(attendanceId) && isValidAttendance(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().eventoId == existing().eventoId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().ownerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'miembroId', 'nombreAsistente', 'fecha', 'tipoAsistente',
+              'presente', 'observaciones', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(attendanceId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+    }
+
+    match /customSheets/{sheetId} {
+      allow get: if isVerifiedUser() && isValidId(sheetId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+      allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+      allow create: if isVerifiedUser() && isValidId(sheetId) && isValidCustomSheet(incoming())
+        && incoming().ownerUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(sheetId) && isValidCustomSheet(incoming())
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().ownerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'nombreHoja', 'archivoOrigen', 'columnas', 'totalFilas', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(sheetId) && (isAdmin() || existing().ownerUid == request.auth.uid);
+
+      match /rows/{rowId} {
+        allow get: if isVerifiedUser() && isValidId(sheetId) && isValidId(rowId) && (
+          isAdmin() ||
+          get(/databases/$(database)/documents/customSheets/$(sheetId)).data.ownerUid == request.auth.uid
+        );
+        allow list: if isVerifiedUser() && (isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid);
+        allow create: if isVerifiedUser() && isValidId(sheetId) && isValidId(rowId)
+          && isValidCustomSheetRow(incoming())
+          && incoming().sheetId == sheetId
+          && incoming().ownerUid == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && ownsDoc('customSheets', sheetId);
+        allow update: if isVerifiedUser() && isValidId(sheetId) && isValidId(rowId)
+          && isValidCustomSheetRow(incoming())
+          && incoming().sheetId == existing().sheetId
+          && incoming().ownerUid == existing().ownerUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            isAdmin() ||
+            (
+              ownsDoc('customSheets', sheetId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['rowIndex', 'values', 'updatedAt'])
+            )
+          );
+        allow delete: if isVerifiedUser() && isValidId(sheetId) && isValidId(rowId) && (
+          isAdmin() ||
+          ownsDoc('customSheets', sheetId)
+        );
+      }
+    }
+  }
+}

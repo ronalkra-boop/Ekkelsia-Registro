@@ -1,0 +1,209 @@
+{
+  "entities": {
+    "StaffProfile": {
+      "title": "Personal Administrativo",
+      "description": "Perfil y rol del personal administrativo de la iglesia (Pastor, Secretaria, Líder, Consulta).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 180 },
+        "role": { "type": "string", "enum": ["pastor", "secretaria", "lider", "consulta"] },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "role", "active", "createdAt", "updatedAt"]
+    },
+    "Family": {
+      "title": "Familia",
+      "description": "Núcleo familiar u hogar registrado en la congregación.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "apellidoFamilia": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "direccion": { "type": "string", "maxLength": 240 },
+        "ciudad": { "type": "string", "maxLength": 100 },
+        "telefonoHogar": { "type": "string", "maxLength": 40 },
+        "jefeHogarNombre": { "type": "string", "maxLength": 140 },
+        "notas": { "type": "string", "maxLength": 600 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "apellidoFamilia", "direccion", "ciudad", "telefonoHogar", "jefeHogarNombre", "notas", "createdAt", "updatedAt"]
+    },
+    "Ministry": {
+      "title": "Ministerio",
+      "description": "Ministerio, departamento o célula de servicio de la iglesia.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nombre": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "categoria": { "type": "string", "enum": ["Alabanza", "Enseñanza", "Jóvenes", "Niños", "Diaconado", "Damas", "Caballeros", "Intercesión", "Acción Social", "Misiones", "Administración", "Células"] },
+        "descripcion": { "type": "string", "maxLength": 500 },
+        "liderNombre": { "type": "string", "maxLength": 140 },
+        "diaReunion": { "type": "string", "maxLength": 60 },
+        "horario": { "type": "string", "maxLength": 60 },
+        "ubicacion": { "type": "string", "maxLength": 140 },
+        "activo": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "nombre", "categoria", "descripcion", "liderNombre", "diaReunion", "horario", "ubicacion", "activo", "createdAt", "updatedAt"]
+    },
+    "Member": {
+      "title": "Miembro",
+      "description": "Registro individual de un miembro o visitante con datos personales, contacto y relación familiar/ministerial.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "codigoMiembro": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "nombres": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "apellidos": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "tipoDocumento": { "type": "string", "enum": ["CC", "TI", "D.EXT", "RC", "PAS", "Otro"] },
+        "documentoIdentidad": { "type": "string", "maxLength": 40 },
+        "fechaNacimiento": { "type": "string", "maxLength": 20 },
+        "genero": { "type": "string", "enum": ["Masculino", "Femenino", "Otro", "No especificado"] },
+        "estadoCivil": { "type": "string", "enum": ["Soltero/a", "Casado/a", "Viudo/a", "Divorciado/a", "Separado/a", "Unión Libre", "No especificado"] },
+        "telefono": { "type": "string", "maxLength": 40 },
+        "email": { "type": "string", "maxLength": 180 },
+        "direccion": { "type": "string", "maxLength": 240 },
+        "barrio": { "type": "string", "maxLength": 100 },
+        "profesionOcupacion": { "type": "string", "maxLength": 120 },
+        "procedenciaTipo": { "type": "string", "enum": ["Local", "Transferido", "No especificado"] },
+        "iglesiaProcedencia": { "type": "string", "maxLength": 140 },
+        "lugarProcedencia": { "type": "string", "maxLength": 120 },
+        "discipuladoEstado": { "type": "string", "enum": ["SI", "NO", "En Proceso"] },
+        "cargo": { "type": "string", "maxLength": 160 },
+        "familiaId": { "type": "string", "maxLength": 128 },
+        "rolFamiliar": { "type": "string", "maxLength": 60 },
+        "estadoMembresia": { "type": "string", "enum": ["Activo", "Visitante", "Nuevo Creyente", "En Discipulado", "Trasladado", "Inactivo"] },
+        "bautizado": { "type": "boolean" },
+        "fechaBautismo": { "type": "string", "maxLength": 20 },
+        "fechaIngreso": { "type": "string", "maxLength": 20 },
+        "ministerioId": { "type": "string", "maxLength": 128 },
+        "notasPastorales": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid", "codigoMiembro", "nombres", "apellidos", "tipoDocumento", "documentoIdentidad",
+        "fechaNacimiento", "genero", "estadoCivil", "telefono", "email", "direccion", "barrio",
+        "profesionOcupacion", "procedenciaTipo", "iglesiaProcedencia", "lugarProcedencia",
+        "discipuladoEstado", "cargo", "familiaId", "rolFamiliar", "estadoMembresia", "bautizado",
+        "fechaBautismo", "fechaIngreso", "ministerioId", "notasPastorales", "createdAt", "updatedAt"
+      ]
+    },
+    "ChurchEvent": {
+      "title": "Evento o Culto",
+      "description": "Culto regular, estudio bíblico, conferencia o actividad programada de la iglesia.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "titulo": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "tipo": { "type": "string", "enum": ["Culto Dominical", "Estudio Bíblico", "Oración", "Jóvenes", "Conferencia", "Bautismo", "Reunión Administrativa", "Especial"] },
+        "fecha": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "horaInicio": { "type": "string", "maxLength": 20 },
+        "horaFin": { "type": "string", "maxLength": 20 },
+        "ubicacion": { "type": "string", "maxLength": 160 },
+        "responsableNombre": { "type": "string", "maxLength": 140 },
+        "ministerioId": { "type": "string", "maxLength": 128 },
+        "estado": { "type": "string", "enum": ["Programado", "En Curso", "Finalizado", "Cancelado"] },
+        "capacidadEsperada": { "type": "number" },
+        "descripcion": { "type": "string", "maxLength": 600 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid", "titulo", "tipo", "fecha", "horaInicio", "horaFin",
+        "ubicacion", "responsableNombre", "ministerioId", "estado",
+        "capacidadEsperada", "descripcion", "createdAt", "updatedAt"
+      ]
+    },
+    "AttendanceRecord": {
+      "title": "Registro de Asistencia",
+      "description": "Asistencia individual a un evento o culto de un miembro o visitante.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventoId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "miembroId": { "type": "string", "maxLength": 128 },
+        "nombreAsistente": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "fecha": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "tipoAsistente": { "type": "string", "enum": ["Miembro", "Visitante", "Primera Vez"] },
+        "presente": { "type": "boolean" },
+        "observaciones": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "eventoId", "miembroId", "nombreAsistente", "fecha", "tipoAsistente", "presente", "observaciones", "createdAt", "updatedAt"]
+    },
+    "CustomSheet": {
+      "title": "Planilla Excel Importada",
+      "description": "Metadatos de una hoja de Excel personalizada que no corresponde a una tabla estándar.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nombreHoja": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "archivoOrigen": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "columnas": { "type": "array", "description": "Hasta 40 nombres de columnas detectadas." },
+        "totalFilas": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "nombreHoja", "archivoOrigen", "columnas", "totalFilas", "createdAt", "updatedAt"]
+    },
+    "CustomSheetRow": {
+      "title": "Fila de Planilla Personalizada",
+      "description": "Registro individual de una hoja Excel importada en subcolección.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sheetId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "rowIndex": { "type": "number" },
+        "values": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerUid", "sheetId", "rowIndex", "values", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/StaffProfile" },
+      "description": "Registro de administradores con permisos completos del sistema."
+    },
+    "/staff/{uid}": {
+      "schema": { "$ref": "#/entities/StaffProfile" },
+      "description": "Perfiles y roles de acceso del personal administrativo (Pastor, Secretaria, Líder, Consulta)."
+    },
+    "/families/{familyId}": {
+      "schema": { "$ref": "#/entities/Family" },
+      "description": "Tabla relacional de núcleos familiares / hogares."
+    },
+    "/ministries/{ministryId}": {
+      "schema": { "$ref": "#/entities/Ministry" },
+      "description": "Tabla relacional de ministerios, departamentos y grupos."
+    },
+    "/members/{memberId}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Tabla principal de miembros y visitantes de la iglesia."
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/ChurchEvent" },
+      "description": "Tabla de cultos, servicios y eventos programados."
+    },
+    "/attendances/{attendanceId}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Registros de asistencia vinculados a eventos y miembros."
+    },
+    "/customSheets/{sheetId}": {
+      "schema": { "$ref": "#/entities/CustomSheet" },
+      "description": "Metadatos de hojas adicionales importadas desde archivos Excel."
+    },
+    "/customSheets/{sheetId}/rows/{rowId}": {
+      "schema": { "$ref": "#/entities/CustomSheetRow" },
+      "description": "Filas de datos de cada hoja personalizada importada desde Excel."
+    }
+  }
+}

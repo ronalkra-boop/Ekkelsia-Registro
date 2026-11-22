@@ -1,0 +1,6 @@
+{
+  "name": "Ekklesia Registro — Sistema General de Base de Datos Eclesial",
+  "description": "Sistema administrativo en tiempo real para la gestión integral de miembros, familias, ministerios, asistencia, eventos e importación de planillas Excel de la iglesia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
