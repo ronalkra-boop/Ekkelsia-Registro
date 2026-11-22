@@ -13,6 +13,8 @@ import { AttendanceView } from './components/AttendanceView';
 import { ExcelImportView } from './components/ExcelImportView';
 import { SchemaExplorerView } from './components/SchemaExplorerView';
 import { TeamAccessView } from './components/TeamAccessView';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { downloadExcelBuffer, exportDatabaseToExcelBuffer } from './utils/excelAnalyzer';
 import type { AppSection } from './types/church';
 
@@ -100,7 +102,7 @@ function ChurchAppShell() {
           </div>
         )}
 
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 max-w-[1440px] w-full mx-auto">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-24 lg:pb-8 max-w-[1440px] w-full mx-auto">
           {activeSection === 'resumen' && (
             <OverviewView
               onNavigate={handleSelectSection}
@@ -122,6 +124,13 @@ function ChurchAppShell() {
           {activeSection === 'equipo' && <TeamAccessView />}
         </main>
       </div>
+
+      <MobileBottomNav
+        activeSection={activeSection}
+        onSelect={handleSelectSection}
+        onOpenMenu={() => setMobileMenuOpen(true)}
+      />
+      <OfflineIndicator />
     </div>
   );
 }

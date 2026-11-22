@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Phone, Plus, Search, Trash2 } from 'lucide-react';
 import { useChurchStore } from '../context/ChurchStoreContext';
 import type {
   DiscipuladoEstado,
@@ -211,7 +211,7 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
 
         <div className="flex flex-wrap items-center gap-3">
           <div
-            className="flex items-center gap-1 p-1 bg-slate-100 rounded-md overflow-x-auto max-w-full"
+            className="flex items-center gap-0.5 sm:gap-1 p-1 bg-slate-100 rounded-md overflow-x-auto max-w-full w-full sm:w-auto justify-between sm:justify-start"
             role="group"
             aria-label="Filtrar por estado de membresía"
           >
@@ -220,7 +220,7 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded transition-colors whitespace-nowrap shrink-0 ${
                   statusFilter === st
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -266,8 +266,99 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
+          <>
+            {/* Vista de tarjetas optimizada para celular */}
+            <div className="md:hidden divide-y divide-slate-200" data-testid="members-mobile-cards">
+              {filteredMembers.map((member) => {
+                const min = ministryMap.get(member.ministerioId);
+                const fullName = `${member.nombres} ${member.apellidos}`.trim();
+                const age = calculateAgeFromDate(member.fechaNacimiento);
+                const hasCargo = member.cargo && member.cargo.toLowerCase() !== 'ninguno';
+                const cleanPhone = (member.telefono || '').replace(/[^\d+]/g, '');
+                return (
+                  <article key={member.id} className="p-4 space-y-2.5 bg-white">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-mono text-slate-500 tabular-nums">
+                          {member.codigoMiembro}
+                          {member.documentoIdentidad ? ` · ${member.tipoDocumento} ${member.documentoIdentidad}` : ''}
+                          {age !== null ? ` · ${age} años` : ''}
+                        </p>
+                        <h3 className="text-sm font-semibold text-slate-900 leading-snug mt-0.5">
+                          {fullName}
+                        </h3>
+                      </div>
+                      <span className={`text-xs whitespace-nowrap shrink-0 ${STATUS_TEXT_CLASS[member.estadoMembresia]}`}>
+                        {member.estadoMembresia}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                      <div className="truncate">
+                        <span className="text-slate-400">Barrio: </span>
+                        <span>{member.barrio || 'Pendiente'}</span>
+                      </div>
+                      <div className="truncate">
+                        <span className="text-slate-400">Bautismo: </span>
+                        <span>{member.bautizado ? 'Sí' : 'No'}</span>
+                      </div>
+                      <div className="truncate col-span-2">
+                        <span className="text-slate-400">Cargo: </span>
+                        <span className="text-slate-800">
+                          {hasCargo ? member.cargo : min ? min.nombre : 'Sin asignar'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                      {cleanPhone ? (
+                        <a
+                          href={`tel:${cleanPhone}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-md font-mono tabular-nums"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          {member.telefono}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400">Sin celular</span>
+                      )}
+
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDetailMember(member)}
+                          aria-label={`Ver ficha de ${fullName}`}
+                          className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md inline-flex items-center gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Ficha
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(member)}
+                          aria-label={`Editar ${fullName}`}
+                          className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-100 rounded-md"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteMember(member.id)}
+                          aria-label={`Eliminar ${fullName}`}
+                          className="p-1.5 text-slate-600 hover:text-rose-700 bg-slate-100 rounded-md"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {/* Tabla completa para tablet y escritorio */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-600">
                   <th className="py-2.5 px-3 font-medium whitespace-nowrap">Código</th>
@@ -373,7 +464,8 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 

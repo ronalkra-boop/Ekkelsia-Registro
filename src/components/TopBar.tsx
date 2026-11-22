@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, Menu, Plus, Upload } from 'lucide-react';
 import type { AppSection } from '../types/church';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface TopBarProps {
   activeSection: AppSection;
@@ -52,6 +53,7 @@ export function TopBar({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <PWAInstallButton variant="topbar" />
         {activeSection !== 'excel' && (
           <button
             type="button"

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { AppSection } from '../types/church';
 import { useChurchStore } from '../context/ChurchStoreContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface SidebarProps {
   activeSection: AppSection;
@@ -117,8 +118,9 @@ export function Sidebar({ activeSection, onSelect, mobileOpen, onCloseMobile }: 
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-200 space-y-3 shrink-0">
-        <div className="text-xs space-y-1">
+      <div className="p-4 border-t border-slate-200 space-y-2.5 shrink-0">
+        <PWAInstallButton variant="sidebar" />
+        <div className="text-xs space-y-1 pt-1">
           <div className="font-medium text-slate-900 truncate">
             {user ? user.displayName || user.email : 'Espacio de demostración'}
           </div>
