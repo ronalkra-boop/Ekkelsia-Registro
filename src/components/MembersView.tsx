@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Eye, Pencil, Phone, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Phone, Plus, Search, Trash2, X } from 'lucide-react';
 import { useChurchStore } from '../context/ChurchStoreContext';
 import type {
   DiscipuladoEstado,
@@ -11,6 +11,14 @@ import type {
   ProcedenciaType,
 } from '../types/church';
 import { calculateAgeFromDate, validateMemberInput } from '../utils/validation';
+import {
+  computeMemberSegmentation,
+  filterMembersBySegments,
+  type AgeSegmentFilter,
+  type BaptismSegmentFilter,
+  type GenderSegmentFilter,
+  type MemberSegmentFilters,
+} from '../utils/memberSegmentation';
 import { Modal } from './Modal';
 
 interface MembersViewProps {
@@ -79,6 +87,9 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Todos' | MembershipStatus>('Todos');
   const [barrioFilter, setBarrioFilter] = useState<string>('Todos');
+  const [genderFilter, setGenderFilter] = useState<GenderSegmentFilter>('Todos');
+  const [ageFilter, setAgeFilter] = useState<AgeSegmentFilter>('Todos');
+  const [baptismFilter, setBaptismFilter] = useState<BaptismSegmentFilter>('Todos');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [form, setForm] = useState(() => createEmptyMemberForm(members.length + 1));
@@ -107,7 +118,35 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
     return Array.from(unique).sort((a, b) => a.localeCompare(b, 'es'));
   }, [members]);
 
-  const filteredMembers = useMemo(() => {
+  const segmentFilters: MemberSegmentFilters = useMemo(
+    () => ({
+      gender: genderFilter,
+      ageGroup: ageFilter,
+      baptism: baptismFilter,
+    }),
+    [genderFilter, ageFilter, baptismFilter]
+  );
+
+  const hasActiveSegments =
+    genderFilter !== 'Todos' || ageFilter !== 'Todos' || baptismFilter !== 'Todos';
+
+  const activeSegmentLabels = useMemo(() => {
+    const labels: string[] = [];
+    if (genderFilter === 'Masculino') labels.push('Hombres');
+    if (genderFilter === 'Femenino') labels.push('Mujeres');
+    if (ageFilter === 'NinosJovenes') labels.push('Niños y jóvenes');
+    if (baptismFilter === 'Bautizados') labels.push('Bautizados');
+    if (baptismFilter === 'NoBautizados') labels.push('No bautizados');
+    return labels;
+  }, [genderFilter, ageFilter, baptismFilter]);
+
+  const clearSegmentFilters = () => {
+    setGenderFilter('Todos');
+    setAgeFilter('Todos');
+    setBaptismFilter('Todos');
+  };
+
+  const baseFilteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
     return members.filter((m) => {
       if (statusFilter !== 'Todos' && m.estadoMembresia !== statusFilter) return false;
@@ -131,6 +170,16 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
       );
     });
   }, [members, search, statusFilter, barrioFilter, familyMap, ministryMap]);
+
+  const segmentation = useMemo(
+    () => computeMemberSegmentation(baseFilteredMembers, segmentFilters),
+    [baseFilteredMembers, segmentFilters]
+  );
+
+  const filteredMembers = useMemo(
+    () => filterMembersBySegments(baseFilteredMembers, segmentFilters),
+    [baseFilteredMembers, segmentFilters]
+  );
 
   const openCreate = () => {
     setEditingMemberId(null);
@@ -242,10 +291,164 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
         </div>
       </div>
 
+      <section aria-label="Segmentación de miembros" className="space-y-2.5">
+        <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+          <span>Segmentación de miembros · selecciona una o más tarjetas para filtrar</span>
+          {hasActiveSegments && (
+            <button
+              type="button"
+              onClick={clearSegmentFilters}
+              className="inline-flex items-center gap-1 text-xs font-medium text-blue-900 hover:text-blue-700 whitespace-nowrap shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+              Limpiar segmentación
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          <button
+            type="button"
+            aria-pressed={genderFilter === 'Masculino'}
+            onClick={() =>
+              setGenderFilter((prev) => (prev === 'Masculino' ? 'Todos' : 'Masculino'))
+            }
+            className={`text-left rounded-lg border px-3.5 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-800/30 ${
+              genderFilter === 'Masculino'
+                ? 'bg-blue-50/70 border-blue-900 ring-1 ring-blue-900/15'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-600">Hombres</span>
+              {genderFilter === 'Masculino' && (
+                <span className="text-[11px] font-medium text-blue-900">Filtrado</span>
+              )}
+            </div>
+            <p className="text-2xl font-semibold text-slate-900 tabular-nums mt-1">
+              {segmentation.hombres}
+            </p>
+            <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+              {segmentation.hombresPct}% del listado
+            </p>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={genderFilter === 'Femenino'}
+            onClick={() =>
+              setGenderFilter((prev) => (prev === 'Femenino' ? 'Todos' : 'Femenino'))
+            }
+            className={`text-left rounded-lg border px-3.5 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-800/30 ${
+              genderFilter === 'Femenino'
+                ? 'bg-blue-50/70 border-blue-900 ring-1 ring-blue-900/15'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-600">Mujeres</span>
+              {genderFilter === 'Femenino' && (
+                <span className="text-[11px] font-medium text-blue-900">Filtrado</span>
+              )}
+            </div>
+            <p className="text-2xl font-semibold text-slate-900 tabular-nums mt-1">
+              {segmentation.mujeres}
+            </p>
+            <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+              {segmentation.mujeresPct}% del listado
+            </p>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={ageFilter === 'NinosJovenes'}
+            onClick={() =>
+              setAgeFilter((prev) => (prev === 'NinosJovenes' ? 'Todos' : 'NinosJovenes'))
+            }
+            className={`col-span-2 sm:col-span-1 text-left rounded-lg border px-3.5 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-800/30 ${
+              ageFilter === 'NinosJovenes'
+                ? 'bg-blue-50/70 border-blue-900 ring-1 ring-blue-900/15'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-600">Niños y jóvenes</span>
+              {ageFilter === 'NinosJovenes' && (
+                <span className="text-[11px] font-medium text-blue-900">Filtrado</span>
+              )}
+            </div>
+            <p className="text-2xl font-semibold text-slate-900 tabular-nums mt-1">
+              {segmentation.ninosYJovenes}
+            </p>
+            <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+              ≤ 25 años · {segmentation.menoresCount} &lt;18 · {segmentation.jovenesCount} 18–25
+            </p>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={baptismFilter === 'Bautizados'}
+            onClick={() =>
+              setBaptismFilter((prev) => (prev === 'Bautizados' ? 'Todos' : 'Bautizados'))
+            }
+            className={`text-left rounded-lg border px-3.5 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-800/30 ${
+              baptismFilter === 'Bautizados'
+                ? 'bg-blue-50/70 border-blue-900 ring-1 ring-blue-900/15'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-600">Bautizados</span>
+              {baptismFilter === 'Bautizados' && (
+                <span className="text-[11px] font-medium text-blue-900">Filtrado</span>
+              )}
+            </div>
+            <p className="text-2xl font-semibold text-emerald-700 tabular-nums mt-1">
+              {segmentation.bautizados}
+            </p>
+            <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+              {segmentation.bautizadosPct}% del listado
+            </p>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={baptismFilter === 'NoBautizados'}
+            onClick={() =>
+              setBaptismFilter((prev) => (prev === 'NoBautizados' ? 'Todos' : 'NoBautizados'))
+            }
+            className={`text-left rounded-lg border px-3.5 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-800/30 ${
+              baptismFilter === 'NoBautizados'
+                ? 'bg-blue-50/70 border-blue-900 ring-1 ring-blue-900/15'
+                : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-600">No bautizados</span>
+              {baptismFilter === 'NoBautizados' && (
+                <span className="text-[11px] font-medium text-blue-900">Filtrado</span>
+              )}
+            </div>
+            <p className="text-2xl font-semibold text-amber-700 tabular-nums mt-1">
+              {segmentation.noBautizados}
+            </p>
+            <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+              {segmentation.noBautizadosPct}% del listado
+            </p>
+          </button>
+        </div>
+      </section>
+
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between text-xs text-slate-600">
+        <div className="px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
           <span className="tabular-nums">
             Mostrando <strong className="text-slate-900">{filteredMembers.length}</strong> de {members.length} registros
+            {activeSegmentLabels.length > 0 && (
+              <span className="text-blue-900 font-medium">
+                {' · '}
+                {activeSegmentLabels.join(' · ')}
+              </span>
+            )}
           </span>
           <span className="hidden sm:inline">Base IBM Casa de Dios · Edad calculada automáticamente desde F. de Nac.</span>
         </div>
@@ -259,6 +462,7 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
                 setSearch('');
                 setStatusFilter('Todos');
                 setBarrioFilter('Todos');
+                clearSegmentFilters();
               }}
               className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-md"
             >
@@ -283,6 +487,7 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
                           {member.codigoMiembro}
                           {member.documentoIdentidad ? ` · ${member.tipoDocumento} ${member.documentoIdentidad}` : ''}
                           {age !== null ? ` · ${age} años` : ''}
+                          {member.genero && member.genero !== 'No especificado' ? ` · ${member.genero}` : ''}
                         </p>
                         <h3 className="text-sm font-semibold text-slate-900 leading-snug mt-0.5">
                           {fullName}
@@ -388,6 +593,7 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
                             ? `${member.tipoDocumento} ${member.documentoIdentidad}`
                             : `${member.tipoDocumento} s/n`}
                           {age !== null ? ` · ${age} años` : ''}
+                          {member.genero && member.genero !== 'No especificado' ? ` · ${member.genero}` : ''}
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-xs text-slate-600">
@@ -896,10 +1102,10 @@ export function MembersView({ externalOpenNewTrigger }: MembersViewProps) {
           <div className="space-y-6 text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-200">
               <div>
-                <p className="text-xs text-slate-500">Identificación y edad</p>
+                <p className="text-xs text-slate-500">Identificación, género y edad</p>
                 <p className="text-slate-900 mt-0.5 font-mono text-xs tabular-nums">
                   {detailMember.tipoDocumento} {detailMember.documentoIdentidad || 'Sin número'} ·{' '}
-                  {detailMember.fechaNacimiento || 'Sin F. de Nac.'}
+                  {detailMember.genero} · {detailMember.fechaNacimiento || 'Sin F. de Nac.'}
                   {detailAge !== null ? ` (${detailAge} años)` : ''}
                 </p>
               </div>

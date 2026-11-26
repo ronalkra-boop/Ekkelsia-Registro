@@ -26,6 +26,12 @@ import {
   SEED_MEMBERS,
   SEED_MINISTRIES,
 } from '../data/seedData';
+import {
+  computeMemberSegmentation,
+  EMPTY_SEGMENT_FILTERS,
+  filterMembersBySegments,
+  isChildOrYouthMember,
+} from './memberSegmentation';
 
 test('validateMemberInput catches empty required fields and invalid email', () => {
   const errs = validateMemberInput({
@@ -252,3 +258,53 @@ test('Excel workbook template generation, analysis, and relational mapping round
   const exportedAnalysis = analyzeWorkbookBuffer(exportedBuf, 'exportado.xlsx');
   assert.equal(exportedAnalysis.sheets.length, 5);
 });
+
+test('memberSegmentation computes gender, children/youth, and baptism counts accurately', () => {
+  const ref = new Date('2026-11-25T12:00:00Z');
+  const summary = computeMemberSegmentation(SEED_MEMBERS, EMPTY_SEGMENT_FILTERS, ref);
+
+  assert.equal(summary.baseTotal, 60);
+  assert.equal(summary.hombres + summary.mujeres, 60);
+  assert.equal(summary.bautizados + summary.noBautizados, 60);
+  assert.equal(summary.ninosYJovenes, summary.menoresCount + summary.jovenesCount);
+  assert.ok(summary.hombres > 0);
+  assert.ok(summary.mujeres > 0);
+  assert.ok(summary.ninosYJovenes > 0);
+  assert.ok(summary.bautizados > 0);
+  assert.ok(summary.noBautizados > 0);
+
+  // Verify TI minor without birth date still classifies as child/youth
+  const tiNoBirth = {
+    ...SEED_MEMBERS[0],
+    fechaNacimiento: '',
+    tipoDocumento: 'TI' as const,
+  };
+  assert.equal(isChildOrYouthMember(tiNoBirth, ref), true);
+
+  // Cross-filtering: Niños y jóvenes + No bautizados
+  const youthFilters = { ...EMPTY_SEGMENT_FILTERS, ageGroup: 'NinosJovenes' as const };
+  const youthSummary = computeMemberSegmentation(SEED_MEMBERS, youthFilters, ref);
+  assert.equal(youthSummary.bautizados + youthSummary.noBautizados, summary.ninosYJovenes);
+  assert.equal(youthSummary.hombres + youthSummary.mujeres, summary.ninosYJovenes);
+
+  const unbaptizedYouth = filterMembersBySegments(
+    SEED_MEMBERS,
+    { gender: 'Todos', ageGroup: 'NinosJovenes', baptism: 'NoBautizados' },
+    ref
+  );
+  assert.equal(unbaptizedYouth.length, youthSummary.noBautizados);
+  for (const m of unbaptizedYouth) {
+    assert.equal(m.bautizado, false);
+    assert.equal(isChildOrYouthMember(m, ref), true);
+  }
+
+  // Gender filtering: Hombres
+  const menOnly = filterMembersBySegments(
+    SEED_MEMBERS,
+    { gender: 'Masculino', ageGroup: 'Todos', baptism: 'Todos' },
+    ref
+  );
+  assert.equal(menOnly.length, summary.hombres);
+  assert.ok(menOnly.every((m) => m.genero === 'Masculino'));
+});
+
